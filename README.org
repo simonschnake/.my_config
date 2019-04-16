@@ -178,6 +178,13 @@ https://github.com/lepisma/cfg
  #+END_SRC
  
 * Main System Setup
+
+** setup emacs + download this
+#+BEGIN_SRC 
+git clone https://github.com/simonschnake/emacs.d.git .emacs.d
+git clone https://github.com/simonschnake/.my_config.git
+emacs .my_config/README.org
+#+END_SRC
 ** setup yay and install packages
  #+BEGIN_SRC bash
  git clone https://aur.archlinux.org/yay.git
