@@ -1,0 +1,221 @@
+#+Title: Linux Installation
+#+Author: Simon Schnake
+#+OPTIONS: toc:nil
+
+* Wishes :noexport:
+- arch
+- x1 carbon specifics
+- crypted
+- stumpwm
+- lock
+- zsh
+- terminal
+- compton
+- customizing
+- polybar
+- rofi
+- music player
+  - beets
+- github managed
+- dunst notifications
+- redshift
+- fonts
+- lid closed
+- yay
+
+
+Place of inspiration
+https://github.com/lepisma/cfg
+* Install Archlinux
+** Create bootable USB
+
+ #+BEGIN_SRC sh
+     dd bs=4M if=/path/to/archlinux.iso of=/dev/sdx status=progress && sync
+ #+END_SRC
+
+** Boot from USB and set prepare system
+
+ #+BEGIN_SRC sh
+     timedatectl set-ntp true
+ #+END_SRC
+
+** Connect to wifi
+ #+BEGIN_SRC sh
+     wifi-menu
+ #+END_SRC
+
+** Partition the disk with gdisk
+
+ We will create 2 partitions, one for boot partition and one for LUKS
+ encrypted partition
+ boot partition: 550M + EFI Type
+
+ #+BEGIN_SRC sh
+    cfdisk /dev/sda
+ #+END_SRC
+
+** Format, encrypt and mount partitions
+
+ I will create only swap and root partitions, but here you can create
+ home, var and other partitions if you wish.
+
+ #+BEGIN_SRC sh
+     mkfs.vfat -F32 /dev/sda1
+
+     cryptsetup -v luksFormat /dev/sda2
+     cryptsetup luksOpen /dev/sda2 luks
+
+     pvcreate /dev/mapper/luks
+     vgcreate vg0 /dev/mapper/luks
+     lvcreate -L 4G vg0 -n swap
+     lvcreate -l +100%FREE vg0 -n root
+
+     mkfs.ext4 /dev/mapper/vg0-root
+     mkswap /dev/mapper/vg0-swap
+
+     mount /dev/mapper/vg0-root /mnt
+     swapon /dev/mapper/vg0-swap
+
+     mkdir /mnt/boot
+     mount /dev/sda1 /mnt/boot
+ #+END_SRC
+
+** Install base system
+
+ #+BEGIN_SRC sh
+     pacstrap /mnt base base-devel emacs git curl zsh dialog wpa_supplicant
+ #+END_SRC
+
+** Generate fstab
+
+ #+BEGIN_SRC sh
+     genfstab -pU /mnt >> /mnt/etc/fstab
+
+     cat /mnt/etc/fstab
+     # 
+     # /etc/fstab: static file system information
+     #
+     # <file system> <dir>   <type>  <options>   <dump>  <pass>
+     # /dev/mapper/vg0-root
+     UUID=44bc2285-0443-44d6-8208-e914638ee1b1   /           ext4        rw,noatime,data=ordered 0 1
+
+     # /dev/sda1
+     UUID=AEF3-11A1          /boot       vfat        rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro    0 2
+
+     # /dev/mapper/vg0-swap
+     UUID=708a05f7-633c-4f0f-a16b-3abce7def965   none        swap        defaults    0 0
+ #+END_SRC
+
+ If you have SSD change relatime on all non-boot partitions to noatime.
+
+** chroot into new system and prepare it
+
+ #+BEGIN_SRC sh
+     arch-chroot /mnt
+
+     ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+     hwclock --systohc
+
+     echo <your-hostname> > /etc/hostname
+
+     passwd
+     useradd -m -G wheel -s /usr/bin/zsh <username>
+     passwd <username>
+ #+END_SRC
+
+** Set locales
+
+ Uncomment en_US.UTF-8 UTF-8 and other needed localizations in
+ /etc/locale.gen
+
+ #+BEGIN_SRC sh
+     echo LANG=en_US.UTF-8 > /etc/locale.conf
+     locale-gen
+ #+END_SRC
+
+** mkinitcpio
+  
+ #+BEGIN_SRC sh
+     bootctl --path=/boot install
+ #+END_SRC
+
+ Edit /etc/mkinitcpio.conf
+
+ #+BEGIN_EXAMPLE
+     MODULES="ext4"
+     .
+     .
+     .
+     HOOKS="base udev autodetect modconf block keymap encrypt lvm2 resume filesystems keyboard fsck"
+ #+END_EXAMPLE
+
+** Configure bootloader
+
+ Create /boot/loader/entries/arch.conf
+
+ #+BEGIN_EXAMPLE
+     title   Arch Linux
+     linux   /vmlinuz-linux
+     initrd  /initramfs-linux.img
+     options cryptdevice=UUID=<YOUR-PARTITION-UUID>:lvm:allow-discards resume=/dev/mapper/vg0-swap root=/dev/mapper/vg0-root rw quiet
+ #+END_EXAMPLE
+
+ Edit /boot/loader/loader.conf
+
+ #+BEGIN_EXAMPLE
+     timeout 0
+     default arch
+     editor 0
+ #+END_EXAMPLE
+
+** Finish installation and boot to new system
+
+ #+BEGIN_SRC sh
+     mkinitcpio -p linux
+     exit
+     umount -R /mnt
+     reboot
+ #+END_SRC
+ 
+* Main System Setup
+** setup yay and install packages
+ #+BEGIN_SRC bash
+ git clone https://aur.archlinux.org/yay.git
+ cd yay
+ makepkg -si
+ #+END_SRC
+
+#+BEGIN_SRC sh
+yay -S $(grep -vE "^\s*#" ./arch-packages | tr "\n" " ")
+#+END_SRC
+** setup prezto
+#+BEGIN_SRC sh
+git clone --recursive https://github.com/sorin-ionescu/prezto.git "${ZDOTDIR:-$HOME}/.zprezto"
+#+END_SRC
+** Setup Stumpwm
+
+#+BEGIN_SRC sh
+curl -O https://beta.quicklisp.org/quicklisp.lisp
+sbcl --load quicklisp.lisp
+#+END_SRC
+
+#+BEGIN_SRC common-lisp
+(quicklisp-quickstart:install)
+(ql:add-to-init-file)
+(ql:quickload "clx")
+(ql:quickload "cl-ppcre")
+(ql:quickload "alexandria")
+#+END_SRC
+
+#+BEGIN_SRC sh
+git clone https://github.com/stumpwm/stumpwm
+cd stumpwm
+autoconf
+./configure
+make
+sudo make install
+
+echo /path/to/stumpwm >> ~/.xinitrc
+echo startx >> ~/.zprofile
+startx
+#+END_SRC
