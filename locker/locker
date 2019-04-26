@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Author: Simon Schnake
+# Original Author: Dolores Portalatin <hello@doloresportalatin.info>
+# Dependencies: imagemagick, i3lock-color-git, ffmpeg, maim, xrandr
+
+RES=$(xrandr | grep 'current' | sed -E 's/.*current\s([0-9]+)\sx\s([0-9]+).*/\1x\2/')
+
+image=$(mktemp --suffix=.png)
+blurred=$(mktemp --suffix=.png)
+
+i3lock_cmd=(i3lock -i "$image")
+
+# text have to be build in
+#font="Ubuntu-Light"
+font="/usr/share/fonts/TTF/Ubuntu-L.ttf"
+text="Type password to unlock"
+
+# make screenshot
+maim $image
+
+color=$(convert "$image" -gravity center -crop 100x100+0+0 +repage -colorspace hsb -resize 1x1 txt:- | awk -F '[%$]' 'NR==2{gsub(",",""); printf "%.0f\n", $(NF-1)}');
+
+if [[ $color -gt $value ]]; then #white background image and black text
+    bw="black"
+    icon="/usr/share/i3lock-fancy/icons/lockdark.png"
+    param=("--insidecolor=0000001c" "--ringcolor=0000003e" \
+        "--linecolor=00000000" "--keyhlcolor=ffffff80" "--ringvercolor=ffffff00" \
+        "--separatorcolor=22222260" "--insidevercolor=ffffff1c" \
+        "--ringwrongcolor=ffffff55" "--insidewrongcolor=ffffff1c" \
+        "--verifcolor=ffffff00" "--wrongcolor=ff000000" "--timecolor=ffffff00" \
+        "--datecolor=ffffff00" "--layoutcolor=ffffff00")
+else #black
+    bw="white"
+    icon="$HOME/cfg/locker/icons/lock.png"
+    param=("--insidecolor=ffffff1c" "--ringcolor=ffffff3e" \
+        "--linecolor=ffffff00" "--keyhlcolor=00000080" "--ringvercolor=00000000" \
+        "--separatorcolor=22222260" "--insidevercolor=0000001c" \
+        "--ringwrongcolor=00000055" "--insidewrongcolor=0000001c" \
+        "--verifcolor=00000000" "--wrongcolor=ff000000" "--timecolor=00000000" \
+        "--datecolor=00000000" "--layoutcolor=00000000")
+fi
+
+# blur screens with ffmpeg
+ffmpeg -f x11grab -video_size $RES -y -i $DISPLAY -i $icon -filter_complex "boxblur=10:25,overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2" -vframes 1 $blurred -loglevel quiet
+
+ffmpeg -y -i $blurred -vf "drawtext=text=$text:fontfile=/usr/share/fonts/TTF/Ubuntu-L.ttf:fontcolor=black:fontsize=26:x=(w-text_w)/2: y=(h-text_h)/2+160" $image -loglevel quiet
+
+
+"${i3lock_cmd[@]}" "${param[@]}"
+

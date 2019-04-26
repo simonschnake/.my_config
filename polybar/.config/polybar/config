@@ -1,0 +1,195 @@
+[colors]
+background = #bbeeeeee
+background-dark = #dda47dd0
+background-alt = #333
+foreground = #333
+foreground-alt = #777
+primary = #ffb52a
+secondary = #e60053
+alert = #bd2c40
+
+[global/wm]
+margin-top = 2
+margin-bottom = 2
+
+[bar/screen]
+monitor = 
+width = 100%
+height = 28
+offset-x = 0
+offset-y = 0
+
+background = ${colors.background}
+foreground = ${colors.foreground}
+
+overline-size = 1
+overline-color = ${colors.background}
+underline-size = 2
+underline-color = ${colors.background}
+
+border-top-size = 0
+border-top-color = #222
+border-bottom-size = 0
+border-bottom-color = #333
+
+padding-left = 3
+padding-right = 3
+module-margin-left = 1
+module-margin-right = 1
+
+font-0 = "Source Code Pro:size=8;1"
+font-1 = "FontAwesome:pixelsize=8;1"
+
+modules-left = powermenu ewmh mpd
+modules-center = date
+modules-right = redshift alsa cpu memory wlan battery
+
+tray-position = right
+tray-padding = 1
+tray-background = ${colors.background-dark}
+
+enable-ipc = true
+
+[module/ewmh]
+type = internal/xworkspaces
+
+enable-click = true
+enable-scroll = false
+
+icon-0 = TEXT;
+icon-1 = WEB;
+icon-2 = EXT;
+icon-3 = FLT;
+icon-default = 
+
+; NOTE: nwin is not supported in the main repo, try
+;       https://github.com/lepisma/polybar/tree/nwin-for-xworkspaces
+label-active = "  %icon% %name%  "
+label-active-foreground = ${colors.foreground}
+label-active-background = ${colors.background-dark}
+label-active-underline = ${colors.foreground}
+
+label-empty = "  %icon% %name%  "
+label-empty-foreground = ${colors.foreground-alt}
+
+
+[module/mpd]
+type = internal/mpd
+
+; Host where mpd is running (either ip or domain name)
+; Can also be the full path to a unix socket where mpd is running.
+host = 127.0.0.1
+port = 6600
+
+; Seconds to sleep between progressbar/song timer sync
+; Default: 1
+interval = 2
+
+label-song = 𝄞 %artist% - %title%
+label-offline = 𝄞 mpd is offline
+
+[module/powermenu]
+type = custom/menu
+
+label-open = 
+label-open-foreground = ${colors.foreground}
+label-close = " "
+label-close-foreground = ${colors.foreground-alt}
+
+menu-0-0 = 
+menu-0-0-exec = poweroff
+menu-0-1 = 
+menu-0-1-exec = reboot
+menu-0-2 = 
+menu-0-2-exec = lock-suspend
+
+menu-0-0-padding = 1
+menu-0-1-padding = 1
+menu-0-2-padding = 1
+
+[module/redshift]
+type = custom/script
+interval = 5
+format-prefix = "RDSFT "
+format-prefix-foreground = ${colors.foreground-alt}
+exec = ~/.config/polybar/redshift.sh
+click-left = ~/.config/polybar/redshift-toggle.sh
+
+[module/cpu]
+type = internal/cpu
+interval = 2
+format-prefix = "CPU "
+format-prefix-foreground = ${colors.foreground-alt}
+label = %percentage%%
+
+[module/memory]
+type = internal/memory
+interval = 3
+format-prefix = "MEM "
+format-prefix-foreground = ${colors.foreground-alt}
+label = %percentage_used%%
+
+[module/wlan]
+type = internal/network
+interface = wlp3s0
+interval = 3
+
+format-connected = "<label-connected> "
+format-connected-prefix = "  "
+format-connected-underline = ${colors.background-dark}
+
+label-connected = %essid%
+label-disconnected =  WLAN
+label-disconnected-foreground = ${colors.secondary}
+
+[module/date]
+type = internal/date
+interval = 5
+time = "%H:%M"
+date = "%a %d %b"
+label = "%time%, %date%"
+format-prefix = " "
+format-prefix-foreground = ${colors.foreground-alt}
+format-prefix-background = ${colors.background}
+label-background = ${colors.background}
+
+[module/alsa]
+type = internal/alsa
+
+format-volume = <ramp-volume> <label-volume>
+label-volume = %percentage%%
+
+ramp-volume-0 = 
+ramp-volume-1 = 
+ramp-volume-2 = 
+ramp-volume-foreground = ${colors.foreground-alt}
+
+label-muted =  MUTED
+format-muted-foreground = ${colors.foreground-alt}
+
+[module/battery]
+type = internal/battery
+battery = BAT0
+adapter = ADP1
+full-at = 98
+
+format-charging = <animation-charging> <label-charging>
+format-discharging = <ramp-capacity> <label-discharging>
+
+format-full-prefix = " "
+format-full-prefix-foreground = ${colors.foreground-alt}
+
+ramp-capacity-0 = 
+ramp-capacity-1 = 
+ramp-capacity-2 = 
+ramp-capacity-3 = 
+ramp-capacity-4 = 
+ramp-capacity-foreground = ${colors.alert}
+
+animation-charging-0 = 
+animation-charging-1 = 
+animation-charging-2 = 
+animation-charging-3 = 
+animation-charging-4 = 
+animation-charging-foreground = ${colors.foreground}
+animation-charging-framerate = 750
