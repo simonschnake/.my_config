@@ -132,7 +132,7 @@ run-or-raise with group search t."
 
 
 ;; Init
-
+(run-shell-command "xsetroot -cursor_name left_ptr")
 (run-shell-command "setxkbmap -option compose:rctrl")
 (run-shell-command "sh ~/.fehbg")
 (run-shell-command "xset b off")
