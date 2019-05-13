@@ -45,6 +45,12 @@ ffmpeg -f x11grab -video_size $RES -y -i $DISPLAY -i $icon -filter_complex "boxb
 
 ffmpeg -y -i $blurred -vf "drawtext=text=$text:fontfile=/usr/share/fonts/TTF/Ubuntu-L.ttf:fontcolor=black:fontsize=26:x=(w-text_w)/2: y=(h-text_h)/2+160" $image -loglevel quiet
 
+# stop music if it is running
+mpc stop
+# mute audio
+# this needs further investigation
+# how to set system audio to mute not headphones
+# amixer sset Master mute
 
 "${i3lock_cmd[@]}" "${param[@]}"
 
