@@ -98,9 +98,6 @@ run-or-raise with group search t."
       (run-or-raise cmd `(:class ,win-cls) T T)))
 
 ;; Commands
-(defcommand run-or-raise-firefox () ()
-  (run-or-raise-prefer-group "firefox" "Firefox"))
-
 (defcommand raise-brightness () ()
   (run-shell-command "light -A 5"))
 
@@ -120,9 +117,16 @@ run-or-raise with group search t."
 (defcommand urxvt () ()
   (run-shell-command "urxvt"))
 
-(define-key *root-map* (kbd "C-f") "run-or-raise-firefox")
+;; (defcommand emacs-terminal () ()
+;;   (run-shell-command "emacsclient -c --eval \"(multi-term-open)\""))
+
 (define-key *root-map* (kbd "c") "urxvt")
 (define-key *root-map* (kbd "C-c") "urxvt")
+
+(defcommand run-or-raise-firefox () ()
+  (run-or-raise-prefer-group "firefox" "Firefox"))
+
+(define-key *root-map* (kbd "C-f") "run-or-raise-firefox")
 
 (defcommand emacs () ()
   (run-shell-command "emacsclient -create-frame --alternate-editor=\"\""))
@@ -143,5 +147,3 @@ run-or-raise with group search t."
 ;; autolock system
 (run-shell-command "emacs --daemon")
 (run-shell-command "xautolock -corners +--- -time 3 -locker \"$HOME/cfg/locker/locker\" -killer \"set dpms force off\"")
-
-
