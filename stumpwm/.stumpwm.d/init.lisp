@@ -36,6 +36,8 @@
 (setf swm-gaps:*inner-gaps-size* 10
       swm-gaps:*outer-gaps-size* 15)
 
+(run-commands "toggle-gaps") ; activate gaps
+
 ;; Looks
 (set-font (make-instance 'xft:font
 			 :family "FantasqueSansMono Nerd Font"
@@ -85,18 +87,6 @@
       (when win
         (stumpwm::pull-window win frame)))))
 
-(defun window-cls-present-p (win-cls &optional all-groups)
-  "Tell if a window (by class) is present"
-  (let ((windows (group-windows (if all-groups (current-screen) (current-group)))))
-    (member win-cls (mapcar #'window-class windows) :test #'string-equal)))
-
-(defun run-or-raise-prefer-group (cmd win-cls)
-  "If there are windows in the same class, cycle in those. Otherwise call
-run-or-raise with group search t."
-  (if (window-cls-present-p win-cls)
-      (run-or-raise cmd `(:class ,win-cls) nil T)
-      (run-or-raise cmd `(:class ,win-cls) T T)))
-
 ;; Commands
 (defcommand raise-brightness () ()
   (run-shell-command "light -A 5"))
@@ -114,36 +104,84 @@ run-or-raise with group search t."
 (define-key *top-map* (kbd "XF86AudioRaiseVolume") "amixer-Master-5+")
 (define-key *top-map* (kbd "XF86AudioMute") "amixer-Master-toggle")
 
-(defcommand urxvt () ()
-  (run-shell-command "urxvt"))
+(defun current-frame-windows ()
+  "return a list of the windows in the active frame"
+  (let* ((g (current-group))
+	 (f (tile-group-current-frame g)))
+    (frame-windows g f)))
 
-;; (defcommand emacs-terminal () ()
-;;   (run-shell-command "emacsclient -c --eval \"(multi-term-open)\""))
-
-(define-key *root-map* (kbd "c") "urxvt")
-(define-key *root-map* (kbd "C-c") "urxvt")
+(defun run-or-raise-in-frame (cmd class)
+  "Raise the first window of the class @class if it is part of the
+windows in the current frame. If not run the shell command @cmd"
+  (let* ((winlist (current-frame-windows))
+	 (win (find-if (lambda (w)
+			 (apply 'window-matches-properties-p w
+				`(:class ,class))) winlist)))
+    (if win
+	(focus-all win)
+	(run-shell-command cmd))))
 
 (defcommand run-or-raise-firefox () ()
-  (run-or-raise-prefer-group "firefox" "Firefox"))
+  (run-or-raise-in-frame "firefox" "Firefox"))
+
+(defcommand run-or-raise-emacs () ()
+  (run-or-raise-in-frame "emacsclient -create-frame
+  --alternate-editor=\"\"" "Emacs"))
+
+(defcommand run-or-raise-urxvt () ()
+  (run-or-raise-in-frame "urxvt" "URxvt"))
 
 (define-key *root-map* (kbd "C-f") "run-or-raise-firefox")
 
-(defcommand emacs () ()
-  (run-shell-command "emacsclient -create-frame --alternate-editor=\"\""))
+(define-key *root-map* (kbd "C-e") "run-or-raise-emacs")
 
-(define-key *root-map* (kbd "C-e") "emacs")
-(define-key *root-map* (kbd "e") "emacs")
-
-
+(define-key *root-map* (kbd "C-c") "run-or-raise-urxvt")
+(define-key *root-map* (kbd "c") "run-or-raise-urxvt")
+ 
 ;; Init
-(run-shell-command "xsetroot -cursor_name left_ptr")
-(run-shell-command "setxkbmap -option compose:rctrl")
-(run-shell-command "sh ~/.fehbg")
-(run-shell-command "xset b off")
+(run-shell-command "xsetroot -cursor_name left_ptr") ; set normal cursor
+(run-shell-command "setxkbmap -option compose:rctrl") ; set compose key
+(run-shell-command "sh ~/.fehbg") ; wallpaper setting
+(run-shell-command "xset b off") ; disable beep
 (run-shell-command "polybar screen --reload")
 (run-shell-command "redshift")
 (run-shell-command "compton")
 (run-shell-command "mpd")
 ;; autolock system
-(run-shell-command "emacs --daemon")
-(run-shell-command "xautolock -corners +--- -time 3 -locker \"$HOME/cfg/locker/locker\" -killer \"set dpms force off\"")
+(run-shell-command "emacs --daemon") ; start emacs --daemon
+(run-shell-command "xautolock -corners +--- -time 3 -locker \"$HOME/cfg/locker/locker\" -killer \"set dpms force off\"") ; start autolock
+
+;; change pull behaviour, i want to place windows for a reason at a
+;; position so C-t C-n and C-t C-p should cycle through the windows in
+;; the frame and pull nothing
+(define-key *root-map* (kbd "n") "next-in-frame")
+(define-key *root-map* (kbd "p") "prev-in-frame")
+
+
+
+
+;; NOT FUNCTIONING
+;; NEEDS FURTHER HACKING
+;; LOOK AT tile-group 
+;; (defun opposite-direction (direction)
+;;   (cond ((string= direction "up") "down")
+;; 	((string= direction "down") "up")
+;; 	((string= direction "right") "left")
+;; 	((string= direction "left") "right")))
+
+
+;; (defcommand (exchange-windows tile-group) (dir) ()
+;;   ""
+;;     (run-commands (concatenate 'string "move-window" " " dir))
+;;     (if (> (length (current-frame-windows)) 1)
+;; 	(let ((opp-dir (opposite-direction dir)))
+;; 	  (run-commands "next-in-frame"
+;; 			(concatenate 'string "move-window" " "
+;; 				     opp-dir)
+;; 			(concatenate 'string "move-focus" " "
+;; 				     dir)))))
+ 
+;; (define-key *root-map* (kbd "S-Up") "exchange-windows up")
+;; (define-key *root-map* (kbd "S-Down") "exchange-windows down")
+;; (define-key *root-map* (kbd "S-Right") "exchange-windows right")
+;; (define-key *root-map* (kbd "S-Left") "exchange-windows left")
