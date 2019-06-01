@@ -5,27 +5,46 @@
 This configuration scripts are now build on top of archlabs-i3 
 * Install archlabs i3
 * Install stumpwm
+
+Run Roswell
 #+BEGIN_SRC sh
-curl -O https://beta.quicklisp.org/quicklisp.lisp
-sbcl --load quicklisp.lisp
+ros run
 #+END_SRC
 
+Install stumpwm
 #+BEGIN_SRC common-lisp
-(quicklisp-quickstart:install)
-(ql:add-to-init-file)
-(ql:quickload "clx cl-ppcre alexandria clx-truetype cl-strings inferior-shell")
+(ql:quickload '(clx-truetype swank stumpwm cl-strings inferior-shell))
 (quit)
 #+END_SRC
 
+Init stumpwm
 #+BEGIN_SRC sh
-git clone https://github.com/stumpwm/stumpwm
-cd stumpwm
-autoconf
-./configure
-make
+ros init stumpwm
 #+END_SRC
 
-edit the =exec= line in =.xinitrc= to =exec path/to/stumpwm=
+Edit =stumpwm.ros= according to the following
+
+#+BEGIN_SRC sh
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(progn 
+  #+quicklisp (ql:quickload '(clx-truetype swank stumpwm cl-strings inferior-shell) :silent t))
+
+(defpackage :ros.script.stumpwm.3749863733
+  (:use :cl))
+(in-package :ros.script.stumpwm.3749863733)
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (stumpwm:stumpwm))
+#+END_SRC
+
+Move =stumpwm.ros= to =.stumpwm.d/start.ros=
+edit the =exec= line in =.xinitrc= to =exec $HOME/.stumpwm.d/start.ros=
 ** Install contrib layer
 #+BEGIN_SRC sh
 git clone https://github.com/slime/slime.git .stumpwm.d/modules
