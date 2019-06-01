@@ -1,5 +1,6 @@
-chromium
-sbcl
-xorg-xinput
-xorg-xset
-rxvt-unicode
+roswell
+pmount
+stow
+redshift
+conda
+texlive-most

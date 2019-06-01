@@ -9,6 +9,7 @@
                      :style swank:*communication-style*
                      :dont-close t)
 
+
 ;; Basics
 (setf *startup-message* NIL
       *suppress-abort-messages* t
@@ -30,15 +31,8 @@
 (load-module "kbd-layouts")
 (load-module "command-history")
 
-(setf kbd-layouts:*caps-lock-behavior* :ctrl)
-(kbd-layouts:keyboard-layout-list "us" "in -variant hin-wx")
-
-(setf swm-gaps:*inner-gaps-size* 10
-      swm-gaps:*outer-gaps-size* 15)
-
-(run-commands "toggle-gaps") ; activate gaps
-
 ;; Looks
+
 (set-font (make-instance 'xft:font
 			 :family "FantasqueSansMono Nerd Font"
 			 :subfamily "Regular"
@@ -53,7 +47,7 @@
       *transient-border-width* 2
       stumpwm::*float-window-border* 2
       stumpwm::*float-window-title-height* 5
-      *mouse-focus-policy* :click)
+      *mouse-focus-policy* :sloppy)
 
 (set-normal-gravity :center)
 (set-maxsize-gravity :center)
@@ -68,6 +62,7 @@
 (set-float-focus-color "#fafafa")
 (set-float-unfocus-color "#fafafa")
 
+
 (setf *colors* (list "#1c1e1f"      ; 0 black
                      "#ff6a6a"      ; 1 red
                      "#66cd00"      ; 2 green
@@ -77,59 +72,48 @@
                      "#00cdcd"      ; 6 cyan
                      "#ffffff"))    ; 7 white
 
+;; Gaps
+(setf swm-gaps:*inner-gaps-size* 15
+      swm-gaps:*outer-gaps-size* 5)
 
-(defun shift-windows-forward (frames win)
-  "Exchange windows through cycling frames."
-  (when frames
-    (let ((frame (car frames)))
-      (shift-windows-forward (cdr frames)
-                             (stumpwm::frame-window frame))
-      (when win
-        (stumpwm::pull-window win frame)))))
+(run-commands "toggle-gaps") ; activate gaps
 
-;; Commands
-(defcommand raise-brightness () ()
-  (run-shell-command "light -A 5"))
 
-(defcommand lower-brightness () ()
-  (run-shell-command "light -U 5"))
+;; (defmacro def-shell-key (map key command)
+;;   `(define-key ,map (kbd ,key) (run-shell-command ,command)))
+;; Bindings
 
-(amixer::defvolcontrol amixer-Master-5- "Master" "5%-")
-(amixer::defvolcontrol amixer-Master-5+ "Master" "5%+")
+;; launcher~
+(define-key *root-map* (kbd "F1") "run-shell-command rofi_run -r")
 
-(define-key *top-map* (kbd "XF86MonBrightnessUp") "raise-brightness")
-(define-key *top-map* (kbd "XF86MonBrightnessDown") "lower-brightness")
+;; core
 
-(define-key *top-map* (kbd "XF86AudioLowerVolume") "amixer-Master-5-")
-(define-key *top-map* (kbd "XF86AudioRaiseVolume") "amixer-Master-5+")
-(define-key *top-map* (kbd "XF86AudioMute") "amixer-Master-toggle")
+(define-key *root-map* (kbd "M-w") "run-shell-command exo-open --launch WebBrowser")
+(define-key *root-map* (kbd "M-f") "run-shell-command exo-open --launch FileManager")
+(define-key *root-map* (kbd "M-t") "run-shell-command exo-open --launch TerminalEmulator")
+(define-key *root-map* (kbd "Return") "run-shell-command exo-open --launch TerminalEmulator")
 
-(defun current-frame-windows ()
-  "return a list of the windows in the active frame"
-  (let* ((g (current-group))
-	 (f (tile-group-current-frame g)))
-    (frame-windows g f)))
+(defun window-cls-present-p (win-cls &optional all-groups)
+  "Tell if a window (by class) is present"
+  (let ((windows (group-windows (if all-groups (current-screen) (current-group)))))
+    (member win-cls (mapcar #'window-class windows) :test #'string-equal)))
 
-(defun run-or-raise-in-frame (cmd class)
-  "Raise the first window of the class @class if it is part of the
-windows in the current frame. If not run the shell command @cmd"
-  (let* ((winlist (current-frame-windows))
-	 (win (find-if (lambda (w)
-			 (apply 'window-matches-properties-p w
-				`(:class ,class))) winlist)))
-    (if win
-	(focus-all win)
-	(run-shell-command cmd))))
+(defun run-or-raise-prefer-group (cmd win-cls)
+  "If there are windows in the same class, cycle in those. Otherwise call
+run-or-raise with group search t."
+  (if (window-cls-present-p win-cls)
+      (run-or-raise cmd `(:class ,win-cls) nil T)
+      (run-or-raise cmd `(:class ,win-cls) T T)))
 
 (defcommand run-or-raise-firefox () ()
-  (run-or-raise-in-frame "firefox" "Firefox"))
+   (run-or-raise-prefer-group "firefox" "Firefox"))
 
 (defcommand run-or-raise-emacs () ()
-  (run-or-raise-in-frame "emacsclient -create-frame
+  (run-or-raise-prefer-group "emacsclient -create-frame
   --alternate-editor=\"\"" "Emacs"))
 
 (defcommand run-or-raise-urxvt () ()
-  (run-or-raise-in-frame "urxvt" "URxvt"))
+  (run-or-raise-prefer-group "urxvt" "URxvt"))
 
 (define-key *root-map* (kbd "C-f") "run-or-raise-firefox")
 
@@ -137,51 +121,59 @@ windows in the current frame. If not run the shell command @cmd"
 
 (define-key *root-map* (kbd "C-c") "run-or-raise-urxvt")
 (define-key *root-map* (kbd "c") "run-or-raise-urxvt")
- 
-;; Init
+
+  
+;; logout script
+(define-key *root-map* (kbd "M-k") "run-shell-command rofi_run -l")
+
+
+;; Screenshot
+;; (define-key *root-map* (kbd "Print")
+;;   "run-shell-command scrot '%S.png' -e 'mv $f $$(xdg-user-dir
+;;   PICTURES)/ArchLabs-%S-$wx$h.png ; feh $$(xdg-user-dir
+;;   PICTURES)/ArchLabs-%S-$wx$h.png")
+
+;; audio
+(define-key *top-map* (kbd "XF86AudioPlay")
+  "run-shell-command playerctl play-pause")
+(define-key *top-map* (kbd "XF86AudioNext")
+  "run-shell-command playerctl next")
+(define-key *top-map* (kbd "XF86AudioPrev")
+  "run-shell-command playerctl previous")
+(define-key *top-map* (kbd "XF86AudioStop")
+  "run-shell-command playerctl stop")
+(define-key *top-map* (kbd "XF86AudioMute")
+  "run-shell-command pamixer -t")
+(define-key *top-map* (kbd "XF86AudioRaiseVolume")
+  "run-shell-command pamixer -i 5")
+(define-key *top-map* (kbd "XF86AudioLowerVolume")
+  "run-shell-command pamixer -d 5")
+
+;; backlight define-key
+(define-key *top-map* (kbd "XF86MonBrightnessUp")
+  "run-shell-command xbacklight -inc 10")
+(define-key *top-map* (kbd "XF86MonBrightnessDown")
+  "run-shell-command xbacklight -dec 10")
+
+;; Autostart
+
+; run with reload
+(run-shell-command "emacs --daemon") ; start emacs --daemon
+(run-shell-command "polybar stumpwm-bar --reload")
+(run-shell-command "nitrogen --restore")
+(run-shell-command "dunst")
+(run-shell-command "xrdb -load ~/.Xresources")
 (run-shell-command "xsetroot -cursor_name left_ptr") ; set normal cursor
 (run-shell-command "setxkbmap -option compose:rctrl") ; set compose key
-(run-shell-command "sh ~/.fehbg") ; wallpaper setting
-(run-shell-command "xset b off") ; disable beep
-(run-shell-command "polybar screen --reload")
 (run-shell-command "redshift")
-(run-shell-command "compton")
-(run-shell-command "mpd")
-;; autolock system
-(run-shell-command "emacs --daemon") ; start emacs --daemon
 (run-shell-command "xautolock -corners +--- -time 3 -locker \"$HOME/cfg/locker/locker\" -killer \"set dpms force off\"") ; start autolock
+; If you have a numpad you may want to enable this
+; (run-shell-command "numlockx on")
 
-;; change pull behaviour, i want to place windows for a reason at a
-;; position so C-t C-n and C-t C-p should cycle through the windows in
-;; the frame and pull nothing
-(define-key *root-map* (kbd "n") "next-in-frame")
-(define-key *root-map* (kbd "p") "prev-in-frame")
-
-
+; run once
+(run-shell-command "xfsettingsd")
+(run-shell-command "compton")
 
 
-;; NOT FUNCTIONING
-;; NEEDS FURTHER HACKING
-;; LOOK AT tile-group 
-;; (defun opposite-direction (direction)
-;;   (cond ((string= direction "up") "down")
-;; 	((string= direction "down") "up")
-;; 	((string= direction "right") "left")
-;; 	((string= direction "left") "right")))
-
-
-;; (defcommand (exchange-windows tile-group) (dir) ()
-;;   ""
-;;     (run-commands (concatenate 'string "move-window" " " dir))
-;;     (if (> (length (current-frame-windows)) 1)
-;; 	(let ((opp-dir (opposite-direction dir)))
-;; 	  (run-commands "next-in-frame"
-;; 			(concatenate 'string "move-window" " "
-;; 				     opp-dir)
-;; 			(concatenate 'string "move-focus" " "
-;; 				     dir)))))
- 
-;; (define-key *root-map* (kbd "S-Up") "exchange-windows up")
-;; (define-key *root-map* (kbd "S-Down") "exchange-windows down")
-;; (define-key *root-map* (kbd "S-Right") "exchange-windows right")
-;; (define-key *root-map* (kbd "S-Left") "exchange-windows left")
+; needed for super to launch rofi through ksuperkey, see ~/.xprofile
+(define-key *root-map* (kbd "M-r") "run-shell-command rofi_run -r")

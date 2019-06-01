@@ -2,205 +2,9 @@
 #+Author: Simon Schnake
 #+OPTIONS: toc:nil
 
-* Wishes :noexport:
-- arch
-- x1 carbon specifics
-- crypted
-- stumpwm
-- lock
-- zsh
-- terminal
-- compton
-- customizing
-- polybar
-- rofi
-- music player
-  - beets
-- github managed
-- dunst notifications
-- redshift
-- fonts
-- lid closed
-- yay
-
-
-Place of inspiration
-https://github.com/lepisma/cfg
-* Install Archlinux
-** Create bootable USB
-
- #+BEGIN_SRC sh
-     dd bs=4M if=/path/to/archlinux.iso of=/dev/sdx status=progress && sync
- #+END_SRC
-
-** Boot from USB and set prepare system
-
- #+BEGIN_SRC sh
-     timedatectl set-ntp true
- #+END_SRC
-
-** Connect to wifi
- #+BEGIN_SRC sh
-     wifi-menu
- #+END_SRC
-
-** Partition the disk with gdisk
-
- We will create 2 partitions, one for boot partition and one for LUKS
- encrypted partition
- boot partition: 550M + EFI Type
-
- #+BEGIN_SRC sh
-    cfdisk /dev/sda
- #+END_SRC
-
-** Format, encrypt and mount partitions
-
- I will create only swap and root partitions, but here you can create
- home, var and other partitions if you wish.
-
- #+BEGIN_SRC sh
-     mkfs.vfat -F32 /dev/sda1
-
-     cryptsetup -v luksFormat /dev/sda2
-     cryptsetup luksOpen /dev/sda2 luks
-
-     pvcreate /dev/mapper/luks
-     vgcreate vg0 /dev/mapper/luks
-     lvcreate -L 4G vg0 -n swap
-     lvcreate -l +100%FREE vg0 -n root
-
-     mkfs.ext4 /dev/mapper/vg0-root
-     mkswap /dev/mapper/vg0-swap
-
-     mount /dev/mapper/vg0-root /mnt
-     swapon /dev/mapper/vg0-swap
-
-     mkdir /mnt/boot
-     mount /dev/sda1 /mnt/boot
- #+END_SRC
-
-** Install base system
-
- #+BEGIN_SRC sh
-     pacstrap /mnt base base-devel emacs git curl zsh dialog wpa_supplicant
- #+END_SRC
-
-** Generate fstab
-
- #+BEGIN_SRC sh
-     genfstab -pU /mnt >> /mnt/etc/fstab
-
-     cat /mnt/etc/fstab
-     # 
-     # /etc/fstab: static file system information
-     #
-     # <file system> <dir>   <type>  <options>   <dump>  <pass>
-     # /dev/mapper/vg0-root
-     UUID=44bc2285-0443-44d6-8208-e914638ee1b1   /           ext4        rw,noatime,data=ordered 0 1
-
-     # /dev/sda1
-     UUID=AEF3-11A1          /boot       vfat        rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro    0 2
-
-     # /dev/mapper/vg0-swap
-     UUID=708a05f7-633c-4f0f-a16b-3abce7def965   none        swap        defaults    0 0
- #+END_SRC
-
- If you have SSD change relatime on all non-boot partitions to noatime.
-
-** chroot into new system and prepare it
-
- #+BEGIN_SRC sh
-     arch-chroot /mnt
-
-     ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
-     hwclock --systohc
-
-     echo <your-hostname> > /etc/hostname
-
-     passwd
-     useradd -m -G wheel -s /usr/bin/zsh <username>
-     passwd <username>
- #+END_SRC
-
-** Set locales
-
- Uncomment en_US.UTF-8 UTF-8 and other needed localizations in
- /etc/locale.gen
-
- #+BEGIN_SRC sh
-     echo LANG=en_US.UTF-8 > /etc/locale.conf
-     locale-gen
- #+END_SRC
-
-** mkinitcpio
-  
- #+BEGIN_SRC sh
-     bootctl --path=/boot install
- #+END_SRC
-
- Edit /etc/mkinitcpio.conf
-
- #+BEGIN_EXAMPLE
-     MODULES="ext4"
-     .
-     .
-     .
-     HOOKS="base udev autodetect modconf block keymap encrypt lvm2 resume filesystems keyboard fsck"
- #+END_EXAMPLE
-
-** Configure bootloader
-
- Create /boot/loader/entries/arch.conf
-
- #+BEGIN_EXAMPLE
-     title   Arch Linux
-     linux   /vmlinuz-linux
-     initrd  /initramfs-linux.img
-     options cryptdevice=UUID=<YOUR-PARTITION-UUID>:lvm:allow-discards resume=/dev/mapper/vg0-swap root=/dev/mapper/vg0-root rw quiet
- #+END_EXAMPLE
-
- Edit /boot/loader/loader.conf
-
- #+BEGIN_EXAMPLE
-     timeout 0
-     default arch
-     editor 0
- #+END_EXAMPLE
-
-** Finish installation and boot to new system
-
- #+BEGIN_SRC sh
-     mkinitcpio -p linux
-     exit
-     umount -R /mnt
-     reboot
- #+END_SRC
- 
-* Main System Setup
-
-** setup emacs + download this
-#+BEGIN_SRC 
-git clone https://github.com/simonschnake/emacs.d.git .emacs.d
-git clone https://github.com/simonschnake/.my_config.git
-emacs .my_config/README.org
-#+END_SRC
-** setup yay and install packages
- #+BEGIN_SRC bash
- git clone https://aur.archlinux.org/yay.git
- cd yay
- makepkg -si
- #+END_SRC
-
-#+BEGIN_SRC sh
-yay -S $(grep -vE "^\s*#" ./arch-packages | tr "\n" " ")
-#+END_SRC
-** setup prezto
-#+BEGIN_SRC sh
-git clone --recursive https://github.com/sorin-ionescu/prezto.git "${ZDOTDIR:-$HOME}/.zprezto"
-#+END_SRC
-** Setup Stumpwm
-
+This configuration scripts are now build on top of archlabs-i3 
+* Install archlabs i3
+* Install stumpwm
 #+BEGIN_SRC sh
 curl -O https://beta.quicklisp.org/quicklisp.lisp
 sbcl --load quicklisp.lisp
@@ -209,9 +13,8 @@ sbcl --load quicklisp.lisp
 #+BEGIN_SRC common-lisp
 (quicklisp-quickstart:install)
 (ql:add-to-init-file)
-(ql:quickload "clx")
-(ql:quickload "cl-ppcre")
-(ql:quickload "alexandria")
+(ql:quickload "clx cl-ppcre alexandria clx-truetype cl-strings inferior-shell")
+(quit)
 #+END_SRC
 
 #+BEGIN_SRC sh
@@ -220,9 +23,63 @@ cd stumpwm
 autoconf
 ./configure
 make
-sudo make install
+#+END_SRC
 
-echo /path/to/stumpwm >> ~/.xinitrc
-echo startx >> ~/.zprofile
-startx
+edit the =exec= line in =.xinitrc= to =exec path/to/stumpwm=
+** Install contrib layer
+#+BEGIN_SRC sh
+git clone https://github.com/slime/slime.git .stumpwm.d/modules
+#+END_SRC
+** Setup Config
+inside =cfg= folder
+#+BEGIN_SRC sh
+stow -t ~/ stumpwm
+#+END_SRC
+
+* Install yay and packages
+#+BEGIN_SRC sh
+baph -S yay
+yay -S $(grep -vE "^\s*#" ./arch-packages | tr "\n" " ")
+#+END_SRC
+
+* Install prezto
+#+BEGIN_SRC sh
+rm -r .zsh .zshrc 
+git clone --recursive https://github.com/sorin-ionescu/prezto.git "${ZDOTDIR:-$HOME}/.zprezto"
+
+setopt EXTENDED_GLOB
+for rcfile in "${ZDOTDIR:-$HOME}"/.zprezto/runcoms/^README.md(.N); do
+  ln -s "$rcfile" "${ZDOTDIR:-$HOME}/.${rcfile:t}"
+done
+#+END_SRC
+
+* stow
+
+#+BEGIN_SRC sh
+stow -t ~/ stumpwm
+stow -t ~/ compton
+stow -t ~/ prezto
+stow -t ~/ dunst
+#+END_SRC
+
+* Miniconda
+
+Download [[https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh][Miniconda3-latest-Linux-x86_64.sh]]
+Install it in =.conda=
+Add the following to =.zshrc=
+#+BEGIN_SRC sh
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/sim/.conda/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/sim/.conda/etc/profile.d/conda.sh" ]; then
+        . "/home/sim/.conda/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/sim/.conda/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
 #+END_SRC
