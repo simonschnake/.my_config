@@ -79,6 +79,7 @@ stow -t ~/ stumpwm
 stow -t ~/ compton
 stow -t ~/ prezto
 stow -t ~/ dunst
+stow -t ~/ redshift
 #+END_SRC
 
 * Miniconda
@@ -102,3 +103,5 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 #+END_SRC
+* Emacs keys everywhere
+Open =settings editor=, go to =xsettings=, =Gtk= and change =KeyThemeName= to Emacs
