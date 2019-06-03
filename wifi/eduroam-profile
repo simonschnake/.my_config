@@ -1,0 +1,19 @@
+# to be put inside /etc/netctl
+
+Description='eduroam'
+Interface='wlp3s0'
+Connection='wireless'
+IP='dhcp'
+ESSID='eduroam'
+Security='wpa-configsection'
+WPAConfigSection=(
+	'ssid="eduroam"'
+	'key_mgmt=WPA-EAP'
+	'eap=TTLS'
+	'proto=WPA RSN'
+	'identity="bax1234@uni-hamburg.de"'
+	'anonymous_identity="anonymous@uni-hamburg.de"'	
+	'password="arnorolf"'
+	'ca_cert="/etc/ssl/certs/Deutsche_Telekom_Root_CA_2.pem"'
+	'phase2="auth=PAP"'
+)
